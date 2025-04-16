@@ -7,6 +7,7 @@ import (
 	stdlog "log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/github/github-mcp-server/pkg/github"
@@ -46,6 +47,11 @@ var (
 			}
 
 			enabledToolsets := viper.GetStringSlice("toolsets")
+			disabledToolsRaw := viper.GetString("disabled-tools")
+			disabledTools := []string{}
+			if disabledToolsRaw != "" {
+				disabledTools = strings.Split(disabledToolsRaw, ",")
+			}
 
 			logCommands := viper.GetBool("enable-command-logging")
 			cfg := runConfig{
@@ -54,6 +60,7 @@ var (
 				logCommands:        logCommands,
 				exportTranslations: exportTranslations,
 				enabledToolsets:    enabledToolsets,
+				disabledTools:      disabledTools,
 			}
 			if err := runStdioServer(cfg); err != nil {
 				stdlog.Fatal("failed to run stdio server:", err)
@@ -69,6 +76,7 @@ func init() {
 
 	// Add global flags that will be shared by all commands
 	rootCmd.PersistentFlags().StringSlice("toolsets", github.DefaultTools, "An optional comma separated list of groups of tools to allow, defaults to enabling all")
+	rootCmd.PersistentFlags().String("disabled-tools", "", "An optional comma separated list of specific tool names to disable")
 	rootCmd.PersistentFlags().Bool("dynamic-toolsets", false, "Enable dynamic toolsets")
 	rootCmd.PersistentFlags().Bool("read-only", false, "Restrict the server to read-only operations")
 	rootCmd.PersistentFlags().String("log-file", "", "Path to log file")
@@ -78,6 +86,7 @@ func init() {
 
 	// Bind flag to viper
 	_ = viper.BindPFlag("toolsets", rootCmd.PersistentFlags().Lookup("toolsets"))
+	_ = viper.BindPFlag("disabled-tools", rootCmd.PersistentFlags().Lookup("disabled-tools"))
 	_ = viper.BindPFlag("dynamic_toolsets", rootCmd.PersistentFlags().Lookup("dynamic-toolsets"))
 	_ = viper.BindPFlag("read-only", rootCmd.PersistentFlags().Lookup("read-only"))
 	_ = viper.BindPFlag("log-file", rootCmd.PersistentFlags().Lookup("log-file"))
@@ -118,6 +127,7 @@ type runConfig struct {
 	logCommands        bool
 	exportTranslations bool
 	enabledToolsets    []string
+	disabledTools      []string
 }
 
 func runStdioServer(cfg runConfig) error {
@@ -172,7 +182,7 @@ func runStdioServer(cfg runConfig) error {
 	}
 
 	// Create default toolsets
-	toolsets, err := github.InitToolsets(enabled, cfg.readOnly, getClient, t)
+	toolsets, err := github.InitToolsets(enabled, cfg.readOnly, getClient, t, cfg.disabledTools)
 	context := github.InitContextToolset(getClient, t)
 
 	if err != nil {

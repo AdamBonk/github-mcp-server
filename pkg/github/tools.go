@@ -13,9 +13,9 @@ type GetClientFn func(context.Context) (*github.Client, error)
 
 var DefaultTools = []string{"all"}
 
-func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn, t translations.TranslationHelperFunc) (*toolsets.ToolsetGroup, error) {
+func InitToolsets(passedToolsets []string, readOnly bool, getClient GetClientFn, t translations.TranslationHelperFunc, disabledTools []string) (*toolsets.ToolsetGroup, error) {
 	// Create a new toolset group
-	tsg := toolsets.NewToolsetGroup(readOnly)
+	tsg := toolsets.NewToolsetGroup(readOnly, disabledTools)
 
 	// Define all available features with their default state (disabled)
 	// Create toolsets
